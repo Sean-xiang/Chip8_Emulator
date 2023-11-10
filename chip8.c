@@ -119,7 +119,7 @@ void handle_input( chip8_t *  chip8) {
 //Initialize chip8 machine 
 bool init_chip8 ( chip8_t  * chip8) {
   chip8->state = RUNNING ; 
-  return true ; 
+  return false ; 
 
 }
 int main(int argc, char **argv) {
