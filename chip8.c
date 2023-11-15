@@ -29,6 +29,17 @@ typedef enum{
 //CHIP8 machine object 
 typedef struct {
   emulator_state_t state ;
+  uint8_t ram[4096] ;
+  bool display[64*32] ; //emulate original chip8 resolution pixel
+  uint16_t stack[12] ; // Subroutine stack
+  uint8_t V[16] ; // Data register V0-VF
+  uint16_t I ;  // Index register
+  uint16_t PC ; // program counter 
+  uint8_t delay_timer ; //decrements at 60hz 
+  uint8_t sound_timer ; //Decrements at 60hz and plays tone whne n> 0 
+  bool keypad[16] ; //Hexadecimal keypad 0x0-0xf
+  char * rom_name ; //Currently running ROM ; 
+
 }chip8_t ;
 
 bool set_config_from_argcs(config_t * config , const int argc ,   char ** argv ) {
@@ -117,11 +128,44 @@ void handle_input( chip8_t *  chip8) {
 
 
 //Initialize chip8 machine 
-bool init_chip8 ( chip8_t  * chip8) {
+bool init_chip8 ( chip8_t  * chip8, const char rom_name[]) {
   chip8->state = RUNNING ; 
-  return false ; 
-
+  const uint32_t entry_point = 0x200 ; 
+  const uint8_t font = {
+        0xF0, 0x90, 0x90, 0x90, 0xF0,   // 0   
+        0x20, 0x60, 0x20, 0x20, 0x70,   // 1  
+        0xF0, 0x10, 0xF0, 0x80, 0xF0,   // 2 
+        0xF0, 0x10, 0xF0, 0x10, 0xF0,   // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10,   // 4    
+        0xF0, 0x80, 0xF0, 0x10, 0xF0,   // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0,   // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40,   // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0,   // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0,   // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90,   // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0,   // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0,   // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0,   // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0,   // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80,   // F
+  } ;
+  // Load font 
+  memcpy( &chip8->ram[0],font,sizeof(font)); 
+  FILE *rom = fopen(rom_name, "rb") ;
+  if( !rom ) {
+    SDL_Log("Rom file %s is invaild or does not exist\n" , rom_name) ; 
+    return false ; 
+  }
+  
+  fseek( rom, 0 , SEEK_END);
+  const long rom_size = ftell(rom ) ; 
+  
+  fclose(rom) ; 
+  //Load ROM
+  chip8->PC = entry_point ; 
+  return true;
 }
+
 int main(int argc, char **argv) {
 
   sdl_t sdl = {0} ; 
